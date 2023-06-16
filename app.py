@@ -1,27 +1,66 @@
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, url_for, session, flash, get_flashed_messages
 import os
 from bs4 import BeautifulSoup as bs
 import urllib.request
 import ssl
 from markupsafe import Markup
+
+
 app = Flask(__name__)
+
+# TODO: optimize with comprehensions
 
 @app.route("/")
 def home():
-    return redirect(url_for("watchlist"))
+    """
+    Default landing page.
+    :return: redirects to num_users, sending options 2-5 for number of users to compare
+    num_users
+    """
+    return render_template("num_users.html", options=list(range(2,6)))
+
+@app.route("/enter_users", methods=["POST"])
+def enter_users():
+    """
+    takes input from form action="/enter_users" in num_users.html
+    :return: render enter_users.html page for user with correct number of text boxes
+    """
+    if request.method == "POST":
+        '''
+        Must be accessed by submitting a number of users
+        Retrieve num_users from dropdown in num_users.html, make an iterable of that length,
+        send to enter_users.html's for loop
+        '''
+        session['num_users'] = int(request.form['num_users'])
+        return render_template("enter_users.html", num=list(range(session['num_users'])))
+    else:
+        # redirect to entering number first
+        return render_template("num_users.html", options=list(range(2,6)))
 
 
 @app.route("/watchlist", methods=["POST", "GET"])
 def watchlist():
+    """
+    retrieves usernames from form action="/watchlist" in enter_users.html
+    scrapes watchlists for each user
+    finds overlap from all watchlists
+    :return: send overlap to display
+    """
+
     if request.method == "POST":  # if accessed by submitting a form
-        watchlist1 = get_watchlist(request.form["username1"])
-        watchlist2 = get_watchlist(request.form["username2"])
-        overlap = get_overlap(watchlist1, watchlist2)
-        # overlap = convert_markup(overlap)
-        return render_template("watchlist.html", list=overlap)  # send to watchlist comparison page
+        usernames = [request.form['username' + str(i)] for i in range(session['num_users'])]
+        if "" in usernames:  # if blank entry
+            print("entered a blank")
+            flash("Please fill all " + str(session['num_users']) + " blanks.")
+            return render_template("enter_users.html", num=list(range(session['num_users'])))
+        else:
+            watchlists = [get_watchlist(username) for username in usernames]  # list of lists of tuples
+            overlap = get_overlap(watchlists) # a list of tuples
+            # overlap = convert_markup(overlap)
+            return render_template("watchlist.html", films=overlap)  # send to watchlist comparison page
     else:  # not accessed by posting
         # render home
-        return render_template("enter_users.html")
+        return render_template("num_users.html", options=list(range(2,6)))
 
 
 def store_webpage(url, ctx, fn):
@@ -60,34 +99,41 @@ def get_soup(web_url):
     return soup
 
 def get_watchlist (user):
+    """
+    :param user: username
+    :return: list of tuple (url-film-name, Full Film Name)
+    """
     web_url = 'https://letterboxd.com/' + user + '/watchlist/'
     soup = get_soup(web_url)
     pages = watchlist_count(soup) // 28 + 1
-    print("pages:", pages)
     watchlist = []
     for i in range(pages):
         url_with_page = web_url + 'page/' + str(i) + '/'
         soup = get_soup(url_with_page)
         films = soup.find_all('li', class_='poster-container')
         for film in films:
-            tag = film.div
-            print(tag)
-            attributes = tag.attrs
-            watchlist.append(attributes['data-film-slug'])
-
-
-
-
-
-
-
-
-
+            watchlist.append((film.div.attrs['data-film-slug'], film.img.attrs['alt']))
+        # TODO: convert to comprehension
     return watchlist
 
 
-def get_overlap(list1, list2):
-    return [film for film in list1 if (film in list2)]
+def get_overlap(watchlists):
+    """
+    finds films that are in all watchlists
+    :param watchlists: is a list of lists of tuples
+    :return: overlap, a list
+    """
+    overlap = []
+    for filmtuple in watchlists[0]:  # take films in first watchlist
+        in_all = 0  # dummy var assume the film is in all the other lists
+        for watchlist in watchlists:
+            if filmtuple not in watchlist:
+                in_all += 1  # increments if one of the lists is missing this film
+        if in_all == 0:  # no increments = film is in all lists
+            overlap.append(filmtuple)
+    return overlap
+
+    # convert to comprehension ?
 
 
 def convert_markup(list):
