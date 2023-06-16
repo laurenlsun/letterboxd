@@ -3,13 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title>Enter Users</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 </head>
 <body>
-  <p>Enter 2 letterboxd usernames: <p>
-        <form action="/watchlist" method="POST">
-            <input type="username" name="username1" placeholder="Username">
-            <input type="username" name="username2" placeholder="Username">
-            <input type="submit" value="Submit">
-        </form>
+{% for message in get_flashed_messages() %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <strong>Error: </strong> {{message}}
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+{% endfor %}
+<p>Enter letterboxd usernames:
+<p>
+<form action="/watchlist" method="POST">
+    {% for i in num %}
+    <input type="username" name="username{{i}}" placeholder="Username"></input>
+    {% endfor %}
+    <input type="submit" value="Submit">
+</form>
 </body>
 </html>
