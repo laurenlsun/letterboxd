@@ -46,11 +46,10 @@ def watchlist():
     finds overlap from all watchlists
     :return: send overlap to display
     """
-
+    print()
     if request.method == "POST":  # if accessed by submitting a form
         usernames = [request.form['username' + str(i)] for i in range(session['num_users'])]
         if "" in usernames:  # if blank entry
-            print("entered a blank")
             flash("Please fill all " + str(session['num_users']) + " blanks.")
             return render_template("enter_users.html", num=list(range(session['num_users'])))
         else:
@@ -111,9 +110,7 @@ def get_watchlist (user):
         url_with_page = web_url + 'page/' + str(i) + '/'
         soup = get_soup(url_with_page)
         films = soup.find_all('li', class_='poster-container')
-        for film in films:
-            watchlist.append((film.div.attrs['data-film-slug'], film.img.attrs['alt']))
-        # TODO: convert to comprehension
+        watchlist.extend([(film.div.attrs['data-film-slug'], film.img.attrs['alt']) for film in films])
     return watchlist
 
 
@@ -124,16 +121,17 @@ def get_overlap(watchlists):
     :return: overlap, a list
     """
     overlap = []
+    print(watchlists[0])
     for filmtuple in watchlists[0]:  # take films in first watchlist
         in_all = 0  # dummy var assume the film is in all the other lists
         for watchlist in watchlists:
             if filmtuple not in watchlist:
                 in_all += 1  # increments if one of the lists is missing this film
         if in_all == 0:  # no increments = film is in all lists
-            overlap.append(filmtuple)
+            if filmtuple not in overlap:
+                overlap.append(filmtuple)
+                print(filmtuple)
     return overlap
-
-    # convert to comprehension ?
 
 
 def convert_markup(list):
